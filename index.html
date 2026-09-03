@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <link rel="icon" href="https://images.emojiterra.com/google/noto-emoji/unicode-17.0/color/svg/1f4b2.svg" type="image/x-icon">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Maquinas do Mês 2026     by Samu-k</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; font-size: 10pt !important; color: black !important; }
+            .print-table-container { display: block !important; width: 100%; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #000; padding: 6px; text-align: left; font-size: 8pt; color: black !important; }
+            
+            /* Força a exibição do resumo de pontos na impressão */
+            .card-total-pontos {
+                display: flex !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                border: 2px solid #166534 !important;
+                background-color: #f0fdf4 !important;
+            }
+        }
+        .print-table-container { display: none; }
+        .tab-active { border-bottom: 3px solid #fff; font-weight: bold; color: white !important; }
+        .btn-check-active { background-color: #059669 !important; color: white !important; border-color: #059669 !important; }
+        .modal-foto { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+        .modal-foto-content { margin: auto; display: block; max-width: 90%; max-height: 80vh; border-radius: 12px; position: relative; top: 50%; transform: translateY(-50%); }
+        .status-novo { border-left: 6px solid #3b82f6; }
+        .status-atraso { border-left: 6px solid #f59e0b; }
+        .status-critico { border-left: 6px solid #ef4444; animation: pulse-border 2s infinite; }
+        @keyframes pulse-border { 0%, 100% { border-left-color: #ef4444; } 50% { border-left-color: #fee2e2; } }
+    </style>
+</head>
+<body class="bg-gray-100 pb-10 font-sans text-gray-800">
+
+    <nav class="bg-blue-900 text-white p-4 sticky top-0 z-50 no-print shadow-md">
+        <div class="max-w-2xl mx-auto flex justify-between items-center">
+            <span class="font-black tracking-tighter text-xl italic">Maquinas do Mês 2026</span>
+            <div class="flex gap-4">
+                <button onclick="showTab('cadastro')" id="btn-tab-cadastro" class="text-[10px] tab-active pb-1">CADASTRO</button>
+                <button onclick="showTab('relatorio')" id="btn-tab-relatorio" class="text-[10px] pb-1 text-blue-200">RELATÓRIO</button>
+                <button onclick="showTab('wiki')" id="btn-tab-wiki" class="text-[10px] pb-1 text-blue-200">BANCO DE ERROS</button>
+            </div>
+        </div>
+    </nav>
+
+    <section id="tab-cadastro" class="p-4 max-w-2xl mx-auto no-print">
+        <form id="formOS" class="bg-white p-6 rounded-3xl shadow-xl space-y-4 border border-gray-200">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h2 class="text-lg font-bold text-gray-700">Registro Técnico</h2>
+                <div class="flex gap-3">
+                    <button type="button" id="btn-excluir-edit" onclick="deletarOSAtual()" class="hidden text-red-600 text-[10px] font-black uppercase bg-red-50 px-3 py-1 rounded-lg">Excluir</button>
+                    <button type="button" id="btn-cancelar" onclick="limparFormulario()" class="hidden text-gray-400 text-[10px] font-black uppercase">Cancelar</button>
+                </div>
+            </div>
+            
+            <input type="hidden" id="edit-id">
+            <input type="hidden" id="foto-base64">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="col-span-2 text-center">
+                    <div class="flex items-center gap-4 w-full justify-center p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                        <label class="cursor-pointer bg-blue-600 text-white font-bold px-6 py-3 rounded-xl text-xs shadow-sm active:scale-95">
+                            📷 FOTO BANCADA
+                            <input type="file" id="foto-input" accept="image/*" class="hidden" onchange="processarFoto(this)">
+                        </label>
+                        <div id="preview-container" class="hidden relative">
+                            <img id="foto-preview" src="" class="w-16 h-16 object-cover rounded-lg border-2 border-white shadow-md">
+                            <button type="button" onclick="removerFoto()" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]">×</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Técnico</label>
+                    <input type="text" id="tecnico" list="lista-tecnicos" required class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm">
+                    <datalist id="lista-tecnicos"></datalist>
+                </div>
+                <div class="col-span-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Nº OS</label>
+                    <input type="number" id="numero_os" required class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div class="col-span-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Cliente</label>
+                    <input type="text" id="cliente" required onblur="checarRecorrencia(this.value)" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div class="col-span-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Máquina</label>
+                    <input type="text" id="maquina" required class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div class="col-span-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Patrimônio</label>
+                    <input type="text" id="patrimonio" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm" placeholder="SEM">
+                </div>
+                
+                <div class="col-span-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Tipo de Custo</label>
+                    <select id="tipo_custo" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold">
+                        <option value="Com Custo">💰 Com Custo</option>
+                        <option value="Sem Custo">🛠️ Sem Custo</option>
+                    </select>
+                </div>
+                <div class="col-span-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Pontuação / Valor</label>
+                    <select id="valor_pontos" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold">
+                        <option value="1">1</option>
+                        <option value="0.5">0,5</option>
+                        <option value="0">0</option>
+                    </select>
+                </div>
+
+                <div class="col-span-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Status</label>
+                    <select id="status_maquina" onchange="verificarGarantia(this.value)" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-blue-800">
+                        <option value="Avaliando">🔵 Avaliando</option>
+                        <option value="Orçamento">🟡 Orçamento</option>
+                        <option value="Aguardando Aprovação">⌛ Aguardando Aprovação</option>
+                        <option value="Aprovado">🔴 Aprovado</option>
+                        <option value="Entregue">🟢 Entregue / Pronta</option>
+						<option value="Retorno">😢 Retorno</option>
+						<option value="Aguardando Jerfeson">🤵🏻 Aguardando Jerfeson</option>
+                        <option value="Aguardando Peça">📦 Aguardando Peça</option>
+                        <option value="Aguardando no deposito de analisados">📦 Aguardando no deposito de analisados</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Data de Entrada</label>
+                    <input type="date" id="data" required class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm">
+                </div>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                <p class="text-[10px] font-black text-blue-900 mb-3 uppercase">Checklist de Procedimentos</p>
+                <div id="checklist-container" class="col-span-2 space-y-3">
+    
+    <!-- Categoria 1: Procedimentos / Serviços -->
+    <div>
+        <p class="text-[9px] font-black text-blue-800 uppercase mb-1">🛠️ Serviços & Manutenção 🛠️</p>
+        <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="toggleCheck(this, 'Formatação')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🛠️ Formatação</button>
+            <button type="button" onclick="toggleCheck(this, 'Reparo Carcaça')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🛠️ Reparo Carcaça</button>
+            <button type="button" onclick="toggleCheck(this, 'Limpeza Interna')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🛠️ Limpeza Interna</button>
+            <button type="button" onclick="toggleCheck(this, 'Pasta Térmica')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🌡️ Pasta Térmica</button>
+            <button type="button" onclick="toggleCheck(this, 'Manutenção Corretiva')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🛠️ Manutenção Corretiva</button>
+            <button type="button" onclick="toggleCheck(this, 'Superficial')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🧪 Superficial</button>
+            <button type="button" onclick="toggleCheck(this, 'Banho Químico')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🧪 Banho Químico</button>
+			<button type="button" onclick="toggleCheck(this, '🧪 Revitalização')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🧪 Revitalização</button>
+        </div>
+    </div>
+
+    <!-- Categoria 2: Peças, Trocas e Vendas -->
+    <div>
+        <p class="text-[9px] font-black text-blue-800 uppercase mb-1">💲 Peças, Acessórios & Vendas 💲</p>
+        <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="toggleCheck(this, 'Oferecer Venda')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">Oferecer Venda💲</button>
+            <button type="button" onclick="toggleCheck(this, 'Teclado USB')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💾 Teclado USB</button>                   
+            <button type="button" onclick="toggleCheck(this, 'SSD')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💾 SSD</button>
+            <button type="button" onclick="toggleCheck(this, 'M.2')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💾 M.2</button>
+            <button type="button" onclick="toggleCheck(this, 'Teclado Interno')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💻 Teclado Interno</button>
+            <button type="button" onclick="toggleCheck(this, 'Adaptador WI-FI')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🗄️ Adaptador WI-FI</button>
+            <button type="button" onclick="toggleCheck(this, 'Case USB para M2-SSD externo')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">📦 Case M.2 Externo</button>
+            <button type="button" onclick="toggleCheck(this, 'Case USB para HD/SSD externo')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">📦 Case HD Externo</button>
+            <button type="button" onclick="toggleCheck(this, 'Gabinete com Fonte')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">📦 Gabinete c/ Fonte</button>
+            <button type="button" onclick="toggleCheck(this, 'Cabo Força Tripolar')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🔌 Cabo Força Tripolar</button>
+            <button type="button" onclick="toggleCheck(this, 'Cabo Força Mickey')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💻🔌 Cabo Mickey</button>
+            <button type="button" onclick="toggleCheck(this, 'Carregador Notebook')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💻🔌 Carregador</button>
+            <button type="button" onclick="toggleCheck(this, 'Troca de Fonte')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🔌 Troca de Fonte</button>
+            <button type="button" onclick="toggleCheck(this, 'Troca de Gabinete')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">📦 Troca de Gabinete</button>
+            <button type="button" onclick="toggleCheck(this, 'Trocar Carcaça')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">💻 Trocar Carcaça</button>
+            <button type="button" onclick="toggleCheck(this, 'Troca de Fonte Real')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🔌 Fonte Real</button>
+            <button type="button" onclick="toggleCheck(this, 'Placa Mãe')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">✨ Placa Mãe</button>
+			<button type="button" onclick="toggleCheck(this, 'Memória Ram')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">✨ Memória Ram</button>
+			<button type="button" onclick="toggleCheck(this, 'Cooler do Processador')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">✨ Cooler do Processador</button>
+            <button type="button" onclick="toggleCheck(this, 'Kit Placa Mãe')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">✨ Kit Placa Mãe</button>
+            <button type="button" onclick="toggleCheck(this, 'Montar PC Novo')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🖥️ Montar PC Novo</button>
+        </div>
+    </div>
+
+    <!-- Categoria 3: Anotações e Diagnósticos -->
+    <div>
+        <p class="text-[9px] font-black text-blue-800 uppercase mb-1">📝 Laudos & Observações</p>
+        <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="toggleCheck(this, 'Configuração')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🖥️ Configuração</button>					
+            <button type="button" onclick="toggleCheck(this, 'Problema Relatado')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">⚠️ Prob. Relatado</button>
+            <button type="button" onclick="toggleCheck(this, 'Problema Encontrado')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🔍 Prob. Encontrado</button>
+            <button type="button" onclick="toggleCheck(this, 'OBS.')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">📝 OBS.</button>
+            <button type="button" onclick="toggleCheck(this, 'Data Entrega')" class="col-span-2 bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">⚠️ Data Entrega</button>
+        </div>
+    </div>
+	
+	<!-- Categoria 4: 😢 Retorno Anotações e Diagnósticos -->
+    <div>
+        <p class="text-[9px] font-black text-blue-800 uppercase mb-1"> 😢 Retorno Laudos & Observações</p>
+        <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="toggleCheck(this, '😢 Retorno ')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">😢 Retorno </button>
+			<button type="button" onclick="toggleCheck(this, 'Configuração')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🖥️ Configuração</button>			
+            <button type="button" onclick="toggleCheck(this, 'Problema Relatado')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">⚠️ Prob. Relatado</button>
+            <button type="button" onclick="toggleCheck(this, 'Problema Encontrado')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">🔍 Prob. Encontrado</button>
+            <button type="button" onclick="toggleCheck(this, 'OBS.')" class="bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">📝 OBS.</button>
+            <button type="button" onclick="toggleCheck(this, 'Data 😢 Retorno: 00/00/0000 ')" class="col-span-2 bg-white border p-2 rounded-lg text-[10px] font-bold text-gray-600 transition-all">⚠️ Data 😢 Retorno  </button>
+        </div>
+    </div>
+
+</div>
+                <button type="button" onclick="gerarRelatoIA()" class="w-full mt-4 bg-purple-600 text-white py-2 rounded-xl text-[10px] font-black shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    🤖 IA: GERAR RELATO AUTOMÁTICO
+                </button>
+            </div>
+            
+            <textarea id="obs" placeholder="Relato técnico final / Problema relatado..." class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm h-32"></textarea>
+            
+            <button type="submit" id="btn-salvar" class="w-full bg-blue-800 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all">SALVAR ORDEM DE SERVIÇO</button>
+        </form>
+    </section>
+
+    <section id="tab-relatorio" class="p-4 max-w-2xl mx-auto hidden">
+        <div id="stats-dash" class="grid grid-cols-4 gap-2 mb-4 no-print text-center">
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-blue-50">
+                <p class="text-[9px] uppercase font-bold text-gray-400">Total Máquinas</p>
+                <p id="dash-total" class="text-xl font-black text-gray-800">0</p>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-blue-50">
+                <p class="text-[9px] uppercase font-bold text-gray-400">Abertas</p>
+                <p id="dash-abertas" class="text-xl font-black text-blue-700">0</p>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-blue-50">
+                <p class="text-[9px] uppercase font-bold text-gray-400">Prontas / Entregues</p>
+                <p id="dash-entregues" class="text-xl font-black text-emerald-600">0</p>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-blue-50">
+                <p class="text-[9px] uppercase font-bold text-gray-400">Atrasadas</p>
+                <p id="dash-atrasadas" class="text-xl font-black text-red-500">0</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-3xl shadow-md mb-6 no-print space-y-4 border border-gray-100">
+            <div class="flex gap-2">
+                <input type="month" id="filtro-mes" onchange="renderRelatorio()" class="flex-1 p-3 border rounded-xl text-sm font-bold bg-gray-50">
+                <button onclick="window.print()" class="bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold shadow-sm">PDF</button>
+            </div>
+            <input type="text" id="busca-rapida" onkeyup="filtrarBusca(this.value)" placeholder="🔍 Buscar cliente, máquina ou OS..." class="w-full p-3 border rounded-xl text-sm bg-gray-50">
+        </div>
+
+        <div class="bg-white p-4 rounded-3xl shadow-md mb-4 no-print border border-gray-100 h-64">
+            <p class="text-[10px] font-black text-gray-400 mb-2 uppercase">Produção por Técnico (Soma de Pontos)</p>
+            <canvas id="graficoTecnicos"></canvas>
+        </div>
+
+        <!-- RESUMO DE PONTOS (VISÍVEL NA TELA E NA IMPRESSÃO/PDF) -->
+        <div id="resumo-pontos" class="card-total-pontos bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 rounded-2xl mb-6 text-xs font-bold flex justify-center items-center gap-2 shadow-sm">
+            <span>Com Custo (Pontos): <strong id="resumo-com-custo" class="text-emerald-700">0,0</strong></span>
+            <span class="text-emerald-300">|</span>
+            <span>Sem Custo (Pontos): <strong id="resumo-sem-custo" class="text-emerald-700">0,0</strong></span>
+            <span class="text-emerald-300">|</span>
+            <span class="text-sm font-extrabold text-emerald-800">Total= <strong id="resumo-total">0,0</strong></span>
+        </div>
+
+        <div id="lista-os" class="space-y-3 no-print"></div>
+
+       <div class="bg-white p-5 rounded-3xl shadow-md my-6 no-print border border-blue-100">
+    <p class="text-[10px] font-black text-gray-400 mb-2 uppercase">Configuração de Mensagem (WhatsApp)</p>
+    <textarea id="template-zap" class="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs h-36" 
+    placeholder="Use: {cliente}, {maquina}, {os}, {status}">*{cliente}* - *{maquina}* (OS *{os}*)
+Status: *{status}*
+ @
+*Mini Relatório Técnico:*
+- Defeito: 
+- Diagnóstico: 
+- Solução: 
+
+ *OBS.:* 
+ Fotos do equipamento:
+ *{maquina}* (OS *{os}*)</textarea>
+    <p class="text-[8px] text-gray-400 mt-1 italic text-right">As chaves { } serão preenchidas automaticamente.</p>
+</div>
+
+        <div class="print-table-container">
+            <h2 class="text-center font-bold text-lg mb-2">Relatório __________________ _____/______/_____</h2>
+            <div class="mb-4 text-xs font-bold border-b pb-2 flex justify-between">
+                <span>Total de Máquinas: <span id="pdf-total-geral">0</span> | Máquinas Prontas / Entregues: <span id="pdf-total-entregues">0</span></span>
+                <span>Com Custo (Pontos): <span id="pdf-total-com-custo">0</span> | Sem Custo (Pontos): <span id="pdf-total-sem-custo">0</span></span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>OS</th>
+                        <th>Técnico</th>
+                        <th>Cliente</th>
+                        <th>Máquina</th>
+                        <th>Problema Relatado</th>
+                        <th>Pontos / Tipo</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-pdf"></tbody>
+            </table>
+        </div>
+
+        <div class="mt-8 flex justify-center gap-6 no-print text-[10px] font-bold text-gray-400 uppercase">
+            <button onclick="exportarBackup()" class="text-blue-600"> EXP._BKP 🖥️</button>
+            <label class="cursor-pointer"> Imp_Bkp 🖥️<input type="file" class="hidden" onchange="importarBackup(event)"></label>
+            <button onclick="limparBancoDados()" class="text-red-400">Apagar Tudo ⚠️</button>
+            <button onclick="conectarGoogleDrive()">Conectar Drive ☁️</button>
+            <button onclick="salvarNoDrive()">Salvar na Nuvem ☁️</button>
+            <button onclick="restaurarDoDrive()">Baixar/Importat da Nuvem 📥</button>
+		</div>
+    </section>
+
+<section id="tab-wiki" class="p-4 max-w-2xl mx-auto hidden">
+    <!-- Painel de Controle de Dados / Backup -->
+    <div class="bg-gray-100 p-4 rounded-3xl shadow-sm mb-6 border border-gray-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-700">Modo de Salvamento:</span>
+            <select id="modo-salvamento" onchange="alternarModoSalvamento()" class="p-2 bg-white border rounded-xl text-xs font-bold text-blue-900">
+                <option value="auto">⚡ Automático</option>
+                <option value="manual">🛡️ Manual (Exigir Confirmação)</option>
+            </select>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <button onclick="exportarBackupWiki()" class="bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow active:scale-95">📥 Baixar Backup</button>
+            <label class="bg-blue-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow active:scale-95 cursor-pointer">
+                📂 Restaurar <input type="file" id="input-restaurar-wiki" accept=".json" onchange="restaurarBackupWiki(event)" class="hidden">
+            </label>
+        </div>
+    </div>
+
+    <!-- Formulário de Cadastro Robusto -->
+    <div class="bg-white p-6 rounded-3xl shadow-xl border border-gray-200 mb-6">
+        <h2 class="text-lg font-black text-gray-700 mb-4 uppercase flex items-center gap-2">
+            <span>🛠️</span> Novo Erro / Solução Crônica
+        </h2>
+        
+        <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Dispositivo</label>
+                <select id="wiki-categoria" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold">
+                    <option value="PC">🖥️ PC</option>
+                    <option value="Notebook">💻 Notebook</option>
+                    <option value="Impressora">🖨️ Impressora</option>
+                    <option value="Nobreak">🔋 Nobreak</option>
+                    <option value="Monitor">📺 Monitor</option>
+					<option value="Carregador">🔌 Carregador</option>
+					<option value="SSD-HD">💾 SSD-HD</option>
+                </select>
+            </div>
+
+            <div class="col-span-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Modelo / Placa</label>
+                <input type="text" id="wiki-modelo" placeholder="Ex: Samsung G41 / LA-9912P" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold">
+            </div>
+
+            <div class="col-span-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Nível de Dificuldade</label>
+                <select id="wiki-nivel" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold text-blue-800">
+                    <option value="🟢 Simples / Troca">🟢 Simples / Troca</option>
+                    <option value="🟡 Intermediário / Reparo">🟡 Intermediário / Reparo</option>
+                    <option value="🔴 Avançado / Eletrônica">🔴 Avançado / Eletrônica (BGA/Curto)</option>
+                </select>
+            </div>
+
+            <div class="col-span-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Componente / Setor</label>
+                <input type="text" id="wiki-setor" placeholder="Ex: Setor de Charge / PWM" class="w-full p-3 bg-gray-50 border rounded-xl text-sm">
+            </div>
+
+            <div class="col-span-2">
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Sintoma / Erro Apresentado</label>
+                <input type="text" id="wiki-defeito" placeholder="Ex: Não dá vídeo, Bip contínuo, Morto" class="w-full p-3 bg-gray-50 border rounded-xl text-sm font-bold">
+            </div>
+
+            <div class="col-span-2">
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Procedimento de Resolução (Passo a Passo)</label>
+                <textarea id="wiki-solucao" placeholder="1. Verificar tensões nas bobinas...\n2. Trocar componente X..." class="w-full p-3 bg-gray-50 border rounded-xl text-sm h-32"></textarea>
+            </div>
+
+            <button onclick="salvarWikiRobusto()" class="col-span-2 bg-blue-900 text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-all">
+                💾 SALVAR NO BANCO DE ERROS
+            </button>
+        </div>
+    </div>
+
+    <!-- Barra de Pesquisa -->
+    <div class="bg-white p-5 rounded-3xl shadow-md mb-6 border border-gray-100">
+        <input type="text" id="busca-wiki" onkeyup="renderWiki()" placeholder="🔍 Pesquisar modelo, sintoma, componente ou placa..." class="w-full p-3 border rounded-xl text-sm bg-gray-50 font-bold">
+    </div>
+
+    <div id="lista-wiki" class="space-y-4"></div>
+</section>
+
+    <div id="modalFoto" class="modal-foto no-print" onclick="this.style.display='none'">
+        <img class="modal-foto-content" id="imgModal">
+    </div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('banco_os')) || [];
+        let wiki = JSON.parse(localStorage.getItem('banco_wiki')) || [];
+        let chartInstancia = null;
+        let checklistSelecionado = [];
+
+        function showTab(tab) {
+            document.getElementById('tab-cadastro').classList.toggle('hidden', tab !== 'cadastro');
+            document.getElementById('tab-relatorio').classList.toggle('hidden', tab !== 'relatorio');
+            document.getElementById('tab-wiki').classList.toggle('hidden', tab !== 'wiki');
+            
+            document.getElementById('btn-tab-cadastro').classList.toggle('tab-active', tab === 'cadastro');
+            document.getElementById('btn-tab-relatorio').classList.toggle('tab-active', tab === 'relatorio');
+            document.getElementById('btn-tab-wiki').classList.toggle('tab-active', tab === 'wiki');
+            
+            if(tab === 'relatorio') renderRelatorio();
+            if(tab === 'wiki') renderWiki();
+            atualizarSugestoesTecnicos();
+        }
+
+let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
+
+        // Inicializa o select de modo de salvamento ao carregar a página
+        window.addEventListener('DOMContentLoaded', () => {
+            const selectModo = document.getElementById('modo-salvamento');
+            if(selectModo) selectModo.value = modoSalvamento;
+            if(typeof renderWiki === 'function') renderWiki();
+        });
+
+        function alternarModoSalvamento() {
+            modoSalvamento = document.getElementById('modo-salvamento').value;
+            localStorage.setItem('modo_salvamento_wiki', modoSalvamento);
+            alert(modoSalvamento === 'auto' ? "Modo Automático ativado!" : "Modo Manual ativado!");
+        }
+
+        function salvarWikiRobusto() {
+            const modelo = document.getElementById('wiki-modelo').value.trim();
+            const codigo = document.getElementById('wiki-codigo').value.trim() || 'Sem código';
+            const defeito = document.getElementById('wiki-defeito').value.trim();
+            const solucao = document.getElementById('wiki-solucao').value.trim();
+            const categoria = document.getElementById('wiki-categoria').value;
+            const nivel = document.getElementById('wiki-nivel').value;
+            const setor = document.getElementById('wiki-setor') ? document.getElementById('wiki-setor').value.trim() : 'Geral';
+
+            if(!modelo || !defeito || !solucao) {
+                alert("Preencha os campos obrigatórios (Modelo, Sintoma e Solução)!");
+                return;
+            }
+
+            if (modoSalvamento === 'manual') {
+                if (!confirm("Deseja realmente salvar este erro no banco de dados local?")) {
+                    return;
+                }
+            }
+
+            const novaEntrada = { 
+                id: Date.now(), 
+                categoria, 
+                modelo, 
+                codigo, 
+                defeito, 
+                solucao, 
+                nivel, 
+                setor 
+            };
+            
+            if (typeof wiki === 'undefined' || !Array.isArray(wiki)) {
+                window.wiki = [];
+            }
+
+            wiki.push(novaEntrada);
+            localStorage.setItem('banco_wiki', JSON.stringify(wiki));
+            
+            // Limpa os campos
+            document.getElementById('wiki-modelo').value = '';
+            document.getElementById('wiki-codigo').value = '';
+            document.getElementById('wiki-defeito').value = '';
+            document.getElementById('wiki-solucao').value = '';
+            
+            renderWiki();
+            alert("Erro salvo com sucesso no Banco de Erros!");
+        }
+
+        function renderWiki() {
+            const lista = document.getElementById('lista-wiki');
+            const buscaElemento = document.getElementById('busca-wiki');
+            if (!lista) return;
+            
+            const busca = buscaElemento ? buscaElemento.value.toLowerCase() : '';
+            lista.innerHTML = '';
+
+            if (typeof wiki === 'undefined' || !Array.isArray(wiki)) {
+                window.wiki = JSON.parse(localStorage.getItem('banco_wiki') || '[]');
+            }
+
+            wiki.filter(item => 
+                (item.modelo && item.modelo.toLowerCase().includes(busca)) || 
+                (item.codigo && item.codigo.toLowerCase().includes(busca)) || 
+                (item.defeito && item.defeito.toLowerCase().includes(busca))
+            ).slice().reverse().forEach(item => {
+                lista.innerHTML += `
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border-l-8 border-blue-900 relative">
+                        <button onclick="deletarWiki(${item.id})" class="absolute top-4 right-4 text-red-300 hover:text-red-600 text-xs font-black">EXCLUIR</button>
+                        
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            <span class="text-[8px] font-black bg-blue-50 text-blue-700 px-2 py-0.5 rounded uppercase">${item.categoria || 'Geral'}</span>
+                            <span class="text-[8px] font-black bg-red-50 text-red-700 px-2 py-0.5 rounded uppercase">Cód: ${item.codigo || 'N/D'}</span>
+                            <span class="text-[8px] font-black bg-purple-50 text-purple-700 px-2 py-0.5 rounded uppercase">${item.nivel || 'Reparo'}</span>
+                        </div>
+
+                        <h3 class="font-black text-sm text-gray-800">${item.modelo}</h3>
+                        <p class="text-xs font-bold text-red-500 mt-1 uppercase">Sintoma: ${item.defeito}</p>
+                        
+                        <div class="mt-3 p-3 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-xs text-gray-600 leading-relaxed">
+                            <strong>🛠 SOLUÇÃO DETALHADA:</strong><br>${(item.solucao || '').replace(/\n/g, '<br>')}
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function deletarWiki(id) {
+            if (confirm("Deseja excluir permanentemente este registro do Banco de Erros?")) {
+                wiki = wiki.filter(item => item.id !== id);
+                localStorage.setItem('banco_wiki', JSON.stringify(wiki));
+                renderWiki();
+            }
+        }
+
+        function exportarBackupWiki() {
+            const dados = localStorage.getItem('banco_wiki') || '[]';
+            
+            // Pega a data e hora atual no formato local
+            const agora = new Date();
+            const dia = String(agora.getDate()).padStart(2, '0');
+            const mes = String(agora.getMonth() + 1).padStart(2, '0');
+            const ano = agora.getFullYear();
+            const horas = String(agora.getHours()).padStart(2, '0');
+            const minutos = String(agora.getMinutes()).padStart(2, '0');
+            
+            // Monta o nome personalizado: DB_Erros_dia.mês.ano_horas.json
+            const nomeArquivo = `DB_Erros_${dia}.${mes}.${ano}_${horas}h${minutos}.json`;
+
+            const blob = new Blob([dados], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function restaurarBackupWiki(event) {
+            const arquivo = event.target.files[0];
+            if (!arquivo) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const dadosRestaurados = JSON.parse(e.target.result);
+                    if (Array.isArray(dadosRestaurados)) {
+                        if (confirm(`Deseja restaurar ${dadosRestaurados.length} itens para o Banco de Erros? Isso substituirá os registros atuais.`)) {
+                            localStorage.setItem('banco_wiki', JSON.stringify(dadosRestaurados));
+                            wiki = dadosRestaurados;
+                            renderWiki();
+                            alert("Banco de Erros restaurado com sucesso!");
+                        }
+                    } else {
+                        alert("O arquivo selecionado não é um backup válido.");
+                    }
+                } catch (err) {
+                    alert("Erro ao ler o arquivo de backup.");
+                }
+            };
+            reader.readAsText(arquivo);
+            event.target.value = ''; 
+        }
+
+        function enviarZap(id) {
+            const os = db.find(i => i.id === id);
+            const template = document.getElementById('template-zap').value;
+
+            const mensagemFinal = template
+                .replace(/{cliente}/g, os.cliente)
+                .replace(/{maquina}/g, os.maquina)
+                .replace(/{os}/g, os.numero_os)
+                .replace(/{status}/g, os.status_maquina);
+
+            const msgEncoded = window.encodeURIComponent(mensagemFinal);
+            window.open(`https://wa.me/?text=${msgEncoded}`);
+        }
+
+        function toggleCheck(btn, item) {
+            btn.classList.toggle('btn-check-active');
+            if(checklistSelecionado.includes(item)) checklistSelecionado = checklistSelecionado.filter(i => i !== item);
+            else checklistSelecionado.push(item);
+        }
+
+        function gerarRelatoIA() {
+            if(checklistSelecionado.length === 0) return alert("Selecione itens no checklist!");
+            const maquina = document.getElementById('maquina').value || "Equipamento";
+            const dataAtual = new Date().toLocaleDateString('pt-BR');
+            
+            let texto = `RELATÓRIO TÉCNICO - ${maquina} (${dataAtual})\nProcedimentos efetuados:\n`;
+            
+            checklistSelecionado.filter(item => item !== 'OBS.').forEach(item => {
+                texto += `• ${item}\n`;
+            });
+
+            texto += `OBS.: `;
+            
+            document.getElementById('obs').value = texto;
+        }
+
+        function verificarGarantia(status) {
+            // Função mantida para lógica futura
+        }
+
+        function processarFoto(input) {
+            const reader = new FileReader();
+            reader.readAsDataURL(input.files[0]);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 600; canvas.height = img.height * (600 / img.width);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const b64 = canvas.toDataURL('image/jpeg', 0.6);
+                    document.getElementById('foto-base64').value = b64;
+                    document.getElementById('foto-preview').src = b64;
+                    document.getElementById('preview-container').classList.remove('hidden');
+                };
+            };
+        }
+
+        function removerFoto() {
+            document.getElementById('foto-base64').value = '';
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('foto-input').value = '';
+        }
+
+        function abrirModal(src) {
+            document.getElementById('modalFoto').style.display = "block";
+            document.getElementById('imgModal').src = src;
+        }
+        function renderRelatorio() {
+            const lista = document.getElementById('lista-os');
+            const tbody = document.getElementById('tbody-pdf');
+            const filtroMes = document.getElementById('filtro-mes').value;
+            
+            if (filtroMes) {
+                const [ano, mes] = filtroMes.split('-');
+                document.title = `Maquina de ${mes}.${ano}`;
+            } else {
+                const hoje = new Date();
+                const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+                const ano = hoje.getFullYear();
+                document.title = `Maquina de ${mes}.${ano}`;
+            }
+
+            lista.innerHTML = ''; tbody.innerHTML = '';
+            let stats = { total: 0, abertas: 0, entregues: 0, atrasadas: 0, pontosComCusto: 0, pontosSemCusto: 0 };
+            let tecnicosData = {};
+
+            const filtrados = db.filter(i => !filtroMes || i.data.startsWith(filtroMes));
+            stats.total = filtrados.length;
+
+            const hoje = new Date();
+
+            filtrados
+              .sort((a,b) => new Date(b.data) - new Date(a.data))
+              .forEach(item => {
+                const dataFormatada = item.data.split('-').reverse().join('/');
+                const dataEntrada = new Date(item.data + 'T00:00:00');
+                
+                const diasEmAberto = Math.floor((hoje - dataEntrada) / (1000 * 60 * 60 * 24));
+                const virouMes = (hoje.getFullYear() > dataEntrada.getFullYear()) || 
+                                 (hoje.getFullYear() === dataEntrada.getFullYear() && hoje.getMonth() > dataEntrada.getMonth());
+                
+                const estaAtrasada = item.status_maquina !== 'Entregue' && diasEmAberto >= 5;
+
+                let classeBorda = item.status_maquina === 'Entregue' ? 'status-novo' : (estaAtrasada ? 'status-critico' : (diasEmAberto >= 3 ? 'status-atraso' : 'status-novo'));
+                
+                if (item.status_maquina === 'Entregue') {
+                    stats.entregues++;
+                } else { 
+                    stats.abertas++; 
+                    if (estaAtrasada) stats.atrasadas++; 
+                }
+
+                const tec = item.tecnico ? item.tecnico.toUpperCase() : "N/A";
+                if(!tecnicosData[tec]) tecnicosData[tec] = { pontosComCusto: 0, pontosSemCusto: 0 };
+
+                let isComCusto = item.tipo_custo ? (item.tipo_custo === 'Com Custo') : (item.custo === '1' || item.custo === 'Com Custo');
+                let pts = item.valor_pontos !== undefined ? parseFloat(item.valor_pontos) : (item.custo === '0.5' || item.custo === 'So com Jef' ? 0.5 : (isComCusto ? 1.0 : 0));
+
+                if (isComCusto) {
+                    stats.pontosComCusto += pts;
+                    tecnicosData[tec].pontosComCusto += pts;
+                } else {
+                    stats.pontosSemCusto += pts;
+                    tecnicosData[tec].pontosSemCusto += pts;
+                }
+
+                let badgeTexto = isComCusto ? `💰 COM CUSTO: ${pts}` : `🛠️ SEM CUSTO: ${pts}`;
+
+                lista.innerHTML += `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm flex items-center gap-4 ${classeBorda}">
+                        ${item.foto ? `<img src="${item.foto}" onclick="abrirModal('${item.foto}')" class="w-14 h-14 object-cover rounded-xl cursor-pointer">` : '<div class="w-14 h-14 bg-gray-100 rounded-xl"></div>'}
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-sm truncate">${item.maquina} ${estaAtrasada ? '⚠️' : ''}</p>
+                            <p class="text-[10px] text-gray-400 font-bold">${dataFormatada} • TÉC: ${item.tecnico || 'N/A'} • ${item.cliente}</p>
+                            <p class="text-[10px] text-gray-400">OS ${item.numero_os} • Patrimônio: ${item.patrimonio}</p>
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                <span class="text-[8px] font-black px-2 py-0.5 rounded ${item.status_maquina === 'Entregue' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${item.status_maquina.toUpperCase()}</span>
+                                <span class="text-[8px] font-black px-2 py-0.5 rounded ${isComCusto ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}">${badgeTexto}</span>
+                                <button onclick="enviarZap(${item.id})" class="text-[8px] font-black text-green-600 ml-1 uppercase">Zap 🟢</button>
+                            </div>
+                        </div>
+                        <button onclick="prepararEdicao(${item.id})" class="p-2 text-blue-600 font-bold text-[10px] bg-gray-50 rounded-lg">EDITAR</button>
+                    </div>`;
+
+                tbody.innerHTML += `<tr>
+                    <td>${dataFormatada}</td>
+                    <td>${item.numero_os}</td>
+                    <td>${item.tecnico || 'N/A'}</td>
+                    <td>${item.cliente}</td>
+                    <td>${item.maquina}</td>
+                    <td>${item.obs || 'N/A'}</td>
+                    <td>${isComCusto ? 'Com Custo' : 'Sem Custo'} (${pts} pts)</td>
+                    <td>${item.status_maquina}</td>
+                </tr>`;
+            });
+
+            // Atualização dos Indicadores de topo
+            document.getElementById('dash-total').innerText = stats.total;
+            document.getElementById('dash-abertas').innerText = stats.abertas;
+            document.getElementById('dash-entregues').innerText = stats.entregues;
+            document.getElementById('dash-atrasadas').innerText = stats.atrasadas;
+
+            // Formatação PT-BR dos pontos
+            const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+            const totalPontosGeral = stats.pontosComCusto + stats.pontosSemCusto;
+
+            // Atualização do novo Card Resumo em Linha
+            document.getElementById('resumo-com-custo').innerText = fmt(stats.pontosComCusto);
+            document.getElementById('resumo-sem-custo').innerText = fmt(stats.pontosSemCusto);
+            document.getElementById('resumo-total').innerText = fmt(totalPontosGeral);
+
+            // Atualização dos dados do PDF
+            if(document.getElementById('pdf-total-geral')) document.getElementById('pdf-total-geral').innerText = stats.total;
+            if(document.getElementById('pdf-total-entregues')) document.getElementById('pdf-total-entregues').innerText = stats.entregues;
+            if(document.getElementById('pdf-total-com-custo')) document.getElementById('pdf-total-com-custo').innerText = fmt(stats.pontosComCusto);
+            if(document.getElementById('pdf-total-sem-custo')) document.getElementById('pdf-total-sem-custo').innerText = fmt(stats.pontosSemCusto);
+
+            renderGraficoStacked(tecnicosData);
+        }
+
+        function renderGraficoStacked(dados) {
+            const ctx = document.getElementById('graficoTecnicos').getContext('2d');
+            if (chartInstancia) chartInstancia.destroy();
+            const labels = Object.keys(dados);
+            chartInstancia = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '💰 Pontos (Com Custo)', data: labels.map(l => dados[l].pontosComCusto), backgroundColor: '#008000', borderRadius: 5 },
+                        { label: '🛠️ Pontos (Sem Custo)', data: labels.map(l => dados[l].pontosSemCusto), backgroundColor: '#ff0000', borderRadius: 5 }
+                    ]
+                },
+                options: { indexAxis: 'y', maintainAspectRatio: false, responsive: true, scales: { x: { stacked: true }, y: { stacked: true } } }
+            });
+        }
+
+// Inicialização do Banco de Dados sem limite de 5MB
+const dbDexie = new Dexie("SistemaMaquinasDB");
+dbDexie.version(1).stores({
+    os: 'id, numero_os, cliente, maquina, data, tecnico'
+});
+
+async function carregarDadosIndexedDB() {
+    db = await dbDexie.os.toArray();
+    const antigo = JSON.parse(localStorage.getItem('banco_os'));
+    if (antigo && antigo.length > 0) {
+        await dbDexie.os.bulkPut(antigo);
+        localStorage.removeItem('banco_os');
+        db = await dbDexie.os.toArray();
+    }
+}
+carregarDadosIndexedDB();
+
+document.getElementById('formOS').onsubmit = async function(e) {
+    e.preventDefault();
+    const editId = document.getElementById('edit-id').value;
+    const numeroOS = document.getElementById('numero_os').value;
+
+    const osExistente = db.find(item => item.numero_os == numeroOS && item.id != editId);
+    if (osExistente) {
+        alert(`⚠️ ATENÇÃO: A OS nº ${numeroOS} já está cadastrada para o cliente "${osExistente.cliente}"!`);
+        return;
+    }
+
+    const novaOS = {
+        id: editId ? parseInt(editId) : Date.now(),
+        tecnico: document.getElementById('tecnico').value,
+        numero_os: numeroOS,
+        cliente: document.getElementById('cliente').value,
+        maquina: document.getElementById('maquina').value,
+        patrimonio: document.getElementById('patrimonio').value || 'SEM',
+        tipo_custo: document.getElementById('tipo_custo').value,
+        valor_pontos: document.getElementById('valor_pontos').value,
+        status_maquina: document.getElementById('status_maquina').value,
+        data: document.getElementById('data').value,
+        obs: document.getElementById('obs').value,
+        foto: document.getElementById('foto-base64').value
+    };
+
+    await dbDexie.os.put(novaOS);
+    await carregarDadosIndexedDB();
+    
+    limparFormulario();
+    showTab('relatorio');
+};
+        function prepararEdicao(id) {
+            const os = db.find(i => i.id === id);
+            showTab('cadastro');
+            document.getElementById('edit-id').value = os.id;
+            document.getElementById('tecnico').value = os.tecnico;
+            document.getElementById('numero_os').value = os.numero_os;
+            document.getElementById('cliente').value = os.cliente;
+            document.getElementById('maquina').value = os.maquina;
+            document.getElementById('patrimonio').value = os.patrimonio;
+            
+            if(os.tipo_custo) {
+                document.getElementById('tipo_custo').value = os.tipo_custo;
+                document.getElementById('valor_pontos').value = os.valor_pontos;
+            } else {
+                document.getElementById('tipo_custo').value = (os.custo === '1' || os.custo === 'Com Custo') ? 'Com Custo' : 'Sem Custo';
+                document.getElementById('valor_pontos').value = (os.custo === '0.5' || os.custo === 'So com Jef') ? '0.5' : (os.custo === '1' || os.custo === 'Com Custo' ? '1' : '0');
+            }
+
+            document.getElementById('status_maquina').value = os.status_maquina;
+            document.getElementById('data').value = os.data;
+            document.getElementById('obs').value = os.obs;
+            if(os.foto) {
+                document.getElementById('foto-base64').value = os.foto;
+                document.getElementById('foto-preview').src = os.foto;
+                document.getElementById('preview-container').classList.remove('hidden');
+            }
+            document.getElementById('btn-salvar').innerText = "ATUALIZAR ORDEM DE SERVIÇO";
+            document.getElementById('btn-cancelar').classList.remove('hidden');
+            document.getElementById('btn-excluir-edit').classList.remove('hidden');
+        }
+
+        function limparFormulario() {
+            document.getElementById('formOS').reset();
+            document.getElementById('edit-id').value = '';
+            removerFoto();
+            checklistSelecionado = [];
+            document.querySelectorAll('#checklist-container button').forEach(b => b.classList.remove('btn-check-active'));
+            document.getElementById('btn-salvar').innerText = "SALVAR ORDEM DE SERVIÇO";
+            document.getElementById('btn-cancelar').classList.add('hidden');
+            document.getElementById('btn-excluir-edit').classList.add('hidden');
+            document.getElementById('data').valueAsDate = new Date();
+        }
+
+        function checarRecorrencia(nome) {
+            if(nome.length < 3) return;
+            const antigo = db.find(i => i.cliente.toLowerCase().includes(nome.toLowerCase()));
+            if(antigo && !document.getElementById('edit-id').value) {
+                if(confirm(`Cliente recorrente: ${antigo.cliente}. Carregar dados da máquina?`)) {
+                    document.getElementById('cliente').value = antigo.cliente;
+                    document.getElementById('maquina').value = antigo.maquina;
+                    document.getElementById('tecnico').value = antigo.tecnico;
+                }
+            }
+        }
+
+        function filtrarBusca(t) {
+            const termo = t.toLowerCase();
+            document.querySelectorAll('#lista-os > div').forEach(card => card.style.display = card.innerText.toLowerCase().includes(termo) ? 'flex' : 'none');
+        }
+
+        function exportarBackup() {
+            const blob = new Blob([JSON.stringify(db)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `BKP_Maquinasdomes.json`;
+            a.click();
+        }
+
+        function importarBackup(e) {
+            const reader = new FileReader();
+            reader.onload = (ev) => { 
+                try {
+                    db = JSON.parse(ev.target.result); 
+                    localStorage.setItem('banco_os', JSON.stringify(db)); 
+                    location.reload(); 
+                } catch(err) { alert("Arquivo de backup inválido!"); }
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        function limparBancoDados() { if(confirm("Deseja ZERAR todos os dados?")) { localStorage.removeItem('banco_os'); location.reload(); } }
+
+        function deletarOSAtual() {
+            if(confirm("Excluir esta OS permanentemente?")) {
+                db = db.filter(i => i.id !== parseInt(document.getElementById('edit-id').value));
+                localStorage.setItem('banco_os', JSON.stringify(db));
+                limparFormulario();
+                showTab('relatorio');
+            }
+        }
+
+        function atualizarSugestoesTecnicos() {
+            const tecnicos = [...new Set(db.map(i => i.tecnico))];
+            document.getElementById('lista-tecnicos').innerHTML = tecnicos.map(t => `<option value="${t}">`).join('');
+        }
+
+        document.getElementById('data').valueAsDate = new Date();
+        document.getElementById('filtro-mes').value = new Date().toISOString().substring(0, 7);
+    </script>
+
+<!-- Biblioteca Oficial do Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+  // Chave gerada no Google Cloud Console
+  const CLIENT_ID = '1005709033673-2d5jrjovrk9g364hm062v6fe7f00r4q6.apps.googleusercontent.com';
+  const NOME_ARQUIVO_BACKUP = 'backup_maquinas_2026.json';
+  const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+
+  let tokenClient;
+  let accessToken = null;
+
+  // Inicializa o serviço do Google ao carregar a página
+  window.addEventListener('load', () => {
+    if (window.google) {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPE,
+        callback: (tokenResponse) => {
+          if (tokenResponse.access_token) {
+            accessToken = tokenResponse.access_token;
+            alert('Conectado ao Google Drive com sucesso!');
+          }
+        },
+      });
+    }
+  });
+
+  // Função para conectar/fazer login no Google
+  function conectarGoogleDrive() {
+    if (tokenClient) {
+      tokenClient.requestAccessToken();
+    } else {
+      alert('Carregando serviços do Google... Tente em alguns segundos.');
+    }
+  }
+
+  // Função para enviar o backup para o Google Drive (appDataFolder)
+  async function salvarNoDrive() {
+    if (!accessToken) {
+      alert('Por favor, clique em "Conectar Drive" primeiro.');
+      return;
+    }
+
+    // Pega todos os dados armazenados no LocalStorage
+    const dadosLocais = JSON.stringify(localStorage);
+
+    try {
+      // 1. Verifica se já existe um arquivo de backup no Drive
+      const query = encodeURIComponent(`name = '${NOME_ARQUIVO_BACKUP}' and 'appDataFolder' in parents and trashed = false`);
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&spaces=appDataFolder`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      const searchData = await searchRes.json();
+      const arquivoExistente = (searchData.files && searchData.files.length > 0) ? searchData.files[0] : null;
+
+      // 2. Prepara o conteúdo para upload
+      const metadata = {
+        name: NOME_ARQUIVO_BACKUP,
+        mimeType: 'application/json',
+        parents: arquivoExistente ? [] : ['appDataFolder']
+      };
+
+      const formData = new FormData();
+      formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      formData.append('file', new Blob([dadosLocais], { type: 'application/json' }));
+
+      let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      let method = 'POST';
+
+      if (arquivoExistente) {
+        url = `https://www.googleapis.com/upload/drive/v3/files/${arquivoExistente.id}?uploadType=multipart`;
+        method = 'PATCH';
+      }
+
+      // 3. Envia para o Drive
+      const uploadRes = await fetch(url, {
+        method: method,
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+        body: formData
+      });
+
+      if (uploadRes.ok) {
+        alert('Backup sincronizado com sucesso na sua nuvem do Google Drive! ☁️');
+      } else {
+        alert('Erro ao enviar o backup. Tente novamente.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro de conexão ao sincronizar.');
+    }
+  }
+
+  // Função para restaurar o backup do Google Drive
+  async function restaurarDoDrive() {
+    if (!accessToken) {
+      alert('Por favor, clique em "Conectar Drive" primeiro.');
+      return;
+    }
+
+    if (!confirm('Deseja restaurar o backup do Google Drive? Os dados atuais da tela serão substituídos pelos do backup.')) {
+      return;
+    }
+
+    try {
+      const query = encodeURIComponent(`name = '${NOME_ARQUIVO_BACKUP}' and 'appDataFolder' in parents and trashed = false`);
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&spaces=appDataFolder`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      const searchData = await searchRes.json();
+
+      if (!searchData.files || searchData.files.length === 0) {
+        alert('Nenhum backup encontrado no seu Google Drive.');
+        return;
+      }
+
+      const fileId = searchData.files[0].id;
+      const downloadRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+
+      const jsonTexto = await downloadRes.text();
+      const dadosRecuperados = JSON.parse(jsonTexto);
+
+      // Limpa e restaura o localStorage
+      localStorage.clear();
+      Object.keys(dadosRecuperados).forEach(chave => {
+        localStorage.setItem(chave, dadosRecuperados[chave]);
+      });
+
+      alert('Dados restaurados com sucesso! A página será recarregada.');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao restaurar o backup do Drive.');
+    }
+  }
+</script>
+	
+</body>
+</html>
