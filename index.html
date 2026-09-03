@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
     <link rel="icon" href="https://images.emojiterra.com/google/noto-emoji/unicode-17.0/color/svg/1f4b2.svg" type="image/x-icon">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -399,7 +399,7 @@ Status: *{status}*
     </div>
 
     <script>
-        let db = JSON.parse(localStorage.getItem('banco_os')) || [];
+        let db = [];
         let wiki = JSON.parse(localStorage.getItem('banco_wiki')) || [];
         let chartInstancia = null;
         let checklistSelecionado = [];
@@ -418,9 +418,8 @@ Status: *{status}*
             atualizarSugestoesTecnicos();
         }
 
-let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
+        let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
 
-        // Inicializa o select de modo de salvamento ao carregar a página
         window.addEventListener('DOMContentLoaded', () => {
             const selectModo = document.getElementById('modo-salvamento');
             if(selectModo) selectModo.value = modoSalvamento;
@@ -435,7 +434,7 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
 
         function salvarWikiRobusto() {
             const modelo = document.getElementById('wiki-modelo').value.trim();
-            const codigo = document.getElementById('wiki-codigo').value.trim() || 'Sem código';
+            const codigo = document.getElementById('wiki-codigo') ? document.getElementById('wiki-codigo').value.trim() : 'Sem código';
             const defeito = document.getElementById('wiki-defeito').value.trim();
             const solucao = document.getElementById('wiki-solucao').value.trim();
             const categoria = document.getElementById('wiki-categoria').value;
@@ -471,9 +470,8 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             wiki.push(novaEntrada);
             localStorage.setItem('banco_wiki', JSON.stringify(wiki));
             
-            // Limpa os campos
             document.getElementById('wiki-modelo').value = '';
-            document.getElementById('wiki-codigo').value = '';
+            if(document.getElementById('wiki-codigo')) document.getElementById('wiki-codigo').value = '';
             document.getElementById('wiki-defeito').value = '';
             document.getElementById('wiki-solucao').value = '';
             
@@ -529,7 +527,6 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
         function exportarBackupWiki() {
             const dados = localStorage.getItem('banco_wiki') || '[]';
             
-            // Pega a data e hora atual no formato local
             const agora = new Date();
             const dia = String(agora.getDate()).padStart(2, '0');
             const mes = String(agora.getMonth() + 1).padStart(2, '0');
@@ -537,7 +534,6 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             const horas = String(agora.getHours()).padStart(2, '0');
             const minutos = String(agora.getMinutes()).padStart(2, '0');
             
-            // Monta o nome personalizado: DB_Erros_dia.mês.ano_horas.json
             const nomeArquivo = `DB_Erros_${dia}.${mes}.${ano}_${horas}h${minutos}.json`;
 
             const blob = new Blob([dados], { type: 'application/json' });
@@ -577,6 +573,7 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
 
         function enviarZap(id) {
             const os = db.find(i => i.id === id);
+            if(!os) return;
             const template = document.getElementById('template-zap').value;
 
             const mensagemFinal = template
@@ -611,11 +608,10 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             document.getElementById('obs').value = texto;
         }
 
-        function verificarGarantia(status) {
-            // Função mantida para lógica futura
-        }
+        function verificarGarantia(status) {}
 
         function processarFoto(input) {
+            if(!input.files || !input.files[0]) return;
             const reader = new FileReader();
             reader.readAsDataURL(input.files[0]);
             reader.onload = (e) => {
@@ -644,6 +640,7 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             document.getElementById('modalFoto').style.display = "block";
             document.getElementById('imgModal').src = src;
         }
+
         function renderRelatorio() {
             const lista = document.getElementById('lista-os');
             const tbody = document.getElementById('tbody-pdf');
@@ -663,7 +660,7 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             let stats = { total: 0, abertas: 0, entregues: 0, atrasadas: 0, pontosComCusto: 0, pontosSemCusto: 0 };
             let tecnicosData = {};
 
-            const filtrados = db.filter(i => !filtroMes || i.data.startsWith(filtroMes));
+            const filtrados = db.filter(i => !filtroMes || (i.data && i.data.startsWith(filtroMes)));
             stats.total = filtrados.length;
 
             const hoje = new Date();
@@ -671,13 +668,10 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             filtrados
               .sort((a,b) => new Date(b.data) - new Date(a.data))
               .forEach(item => {
-                const dataFormatada = item.data.split('-').reverse().join('/');
-                const dataEntrada = new Date(item.data + 'T00:00:00');
+                const dataFormatada = item.data ? item.data.split('-').reverse().join('/') : 'N/A';
+                const dataEntrada = item.data ? new Date(item.data + 'T00:00:00') : new Date();
                 
                 const diasEmAberto = Math.floor((hoje - dataEntrada) / (1000 * 60 * 60 * 24));
-                const virouMes = (hoje.getFullYear() > dataEntrada.getFullYear()) || 
-                                 (hoje.getFullYear() === dataEntrada.getFullYear() && hoje.getMonth() > dataEntrada.getMonth());
-                
                 const estaAtrasada = item.status_maquina !== 'Entregue' && diasEmAberto >= 5;
 
                 let classeBorda = item.status_maquina === 'Entregue' ? 'status-novo' : (estaAtrasada ? 'status-critico' : (diasEmAberto >= 3 ? 'status-atraso' : 'status-novo'));
@@ -713,7 +707,7 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
                             <p class="text-[10px] text-gray-400 font-bold">${dataFormatada} • TÉC: ${item.tecnico || 'N/A'} • ${item.cliente}</p>
                             <p class="text-[10px] text-gray-400">OS ${item.numero_os} • Patrimônio: ${item.patrimonio}</p>
                             <div class="flex flex-wrap gap-1 mt-1">
-                                <span class="text-[8px] font-black px-2 py-0.5 rounded ${item.status_maquina === 'Entregue' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${item.status_maquina.toUpperCase()}</span>
+                                <span class="text-[8px] font-black px-2 py-0.5 rounded ${item.status_maquina === 'Entregue' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${item.status_maquina ? item.status_maquina.toUpperCase() : ''}</span>
                                 <span class="text-[8px] font-black px-2 py-0.5 rounded ${isComCusto ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}">${badgeTexto}</span>
                                 <button onclick="enviarZap(${item.id})" class="text-[8px] font-black text-green-600 ml-1 uppercase">Zap 🟢</button>
                             </div>
@@ -733,22 +727,18 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
                 </tr>`;
             });
 
-            // Atualização dos Indicadores de topo
             document.getElementById('dash-total').innerText = stats.total;
             document.getElementById('dash-abertas').innerText = stats.abertas;
             document.getElementById('dash-entregues').innerText = stats.entregues;
             document.getElementById('dash-atrasadas').innerText = stats.atrasadas;
 
-            // Formatação PT-BR dos pontos
             const fmt = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
             const totalPontosGeral = stats.pontosComCusto + stats.pontosSemCusto;
 
-            // Atualização do novo Card Resumo em Linha
             document.getElementById('resumo-com-custo').innerText = fmt(stats.pontosComCusto);
             document.getElementById('resumo-sem-custo').innerText = fmt(stats.pontosSemCusto);
             document.getElementById('resumo-total').innerText = fmt(totalPontosGeral);
 
-            // Atualização dos dados do PDF
             if(document.getElementById('pdf-total-geral')) document.getElementById('pdf-total-geral').innerText = stats.total;
             if(document.getElementById('pdf-total-entregues')) document.getElementById('pdf-total-entregues').innerText = stats.entregues;
             if(document.getElementById('pdf-total-com-custo')) document.getElementById('pdf-total-com-custo').innerText = fmt(stats.pontosComCusto);
@@ -774,57 +764,60 @@ let modoSalvamento = localStorage.getItem('modo_salvamento_wiki') || 'auto';
             });
         }
 
-// Inicialização do Banco de Dados sem limite de 5MB
-const dbDexie = new Dexie("SistemaMaquinasDB");
-dbDexie.version(1).stores({
-    os: 'id, numero_os, cliente, maquina, data, tecnico'
-});
+        // Inicialização do Banco de Dados Dexie
+        const dbDexie = new Dexie("SistemaMaquinasDB");
+        dbDexie.version(1).stores({
+            os: 'id, numero_os, cliente, maquina, data, tecnico'
+        });
 
-async function carregarDadosIndexedDB() {
-    db = await dbDexie.os.toArray();
-    const antigo = JSON.parse(localStorage.getItem('banco_os'));
-    if (antigo && antigo.length > 0) {
-        await dbDexie.os.bulkPut(antigo);
-        localStorage.removeItem('banco_os');
-        db = await dbDexie.os.toArray();
-    }
-}
-carregarDadosIndexedDB();
+        async function carregarDadosIndexedDB() {
+            db = await dbDexie.os.toArray();
+            const antigo = JSON.parse(localStorage.getItem('banco_os'));
+            if (antigo && antigo.length > 0) {
+                await dbDexie.os.bulkPut(antigo);
+                localStorage.removeItem('banco_os');
+                db = await dbDexie.os.toArray();
+            }
+            renderRelatorio();
+        }
+        carregarDadosIndexedDB();
 
-document.getElementById('formOS').onsubmit = async function(e) {
-    e.preventDefault();
-    const editId = document.getElementById('edit-id').value;
-    const numeroOS = document.getElementById('numero_os').value;
+        document.getElementById('formOS').onsubmit = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-id').value;
+            const numeroOS = document.getElementById('numero_os').value;
 
-    const osExistente = db.find(item => item.numero_os == numeroOS && item.id != editId);
-    if (osExistente) {
-        alert(`⚠️ ATENÇÃO: A OS nº ${numeroOS} já está cadastrada para o cliente "${osExistente.cliente}"!`);
-        return;
-    }
+            const osExistente = db.find(item => item.numero_os == numeroOS && item.id != editId);
+            if (osExistente) {
+                alert(`⚠️ ATENÇÃO: A OS nº ${numeroOS} já está cadastrada para o cliente "${osExistente.cliente}"!`);
+                return;
+            }
 
-    const novaOS = {
-        id: editId ? parseInt(editId) : Date.now(),
-        tecnico: document.getElementById('tecnico').value,
-        numero_os: numeroOS,
-        cliente: document.getElementById('cliente').value,
-        maquina: document.getElementById('maquina').value,
-        patrimonio: document.getElementById('patrimonio').value || 'SEM',
-        tipo_custo: document.getElementById('tipo_custo').value,
-        valor_pontos: document.getElementById('valor_pontos').value,
-        status_maquina: document.getElementById('status_maquina').value,
-        data: document.getElementById('data').value,
-        obs: document.getElementById('obs').value,
-        foto: document.getElementById('foto-base64').value
-    };
+            const novaOS = {
+                id: editId ? parseInt(editId) : Date.now(),
+                tecnico: document.getElementById('tecnico').value,
+                numero_os: numeroOS,
+                cliente: document.getElementById('cliente').value,
+                maquina: document.getElementById('maquina').value,
+                patrimonio: document.getElementById('patrimonio').value || 'SEM',
+                tipo_custo: document.getElementById('tipo_custo').value,
+                valor_pontos: document.getElementById('valor_pontos').value,
+                status_maquina: document.getElementById('status_maquina').value,
+                data: document.getElementById('data').value,
+                obs: document.getElementById('obs').value,
+                foto: document.getElementById('foto-base64').value
+            };
 
-    await dbDexie.os.put(novaOS);
-    await carregarDadosIndexedDB();
-    
-    limparFormulario();
-    showTab('relatorio');
-};
+            await dbDexie.os.put(novaOS);
+            await carregarDadosIndexedDB();
+            
+            limparFormulario();
+            showTab('relatorio');
+        };
+
         function prepararEdicao(id) {
             const os = db.find(i => i.id === id);
+            if(!os) return;
             showTab('cadastro');
             document.getElementById('edit-id').value = os.id;
             document.getElementById('tecnico').value = os.tecnico;
@@ -883,32 +876,48 @@ document.getElementById('formOS').onsubmit = async function(e) {
             document.querySelectorAll('#lista-os > div').forEach(card => card.style.display = card.innerText.toLowerCase().includes(termo) ? 'flex' : 'none');
         }
 
-        function exportarBackup() {
-            const blob = new Blob([JSON.stringify(db)], {type: 'application/json'});
+        // Exportação de arquivo local lê os dados diretamente do IndexedDB (Dexie)
+        async function exportarBackup() {
+            const todasOS = await dbDexie.os.toArray();
+            const blob = new Blob([JSON.stringify(todasOS)], {type: 'application/json'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = `BKP_Maquinasdomes.json`;
             a.click();
         }
 
+        // Importação salva no Dexie para garantir suporte às fotos
         function importarBackup(e) {
             const reader = new FileReader();
-            reader.onload = (ev) => { 
+            reader.onload = async (ev) => { 
                 try {
-                    db = JSON.parse(ev.target.result); 
-                    localStorage.setItem('banco_os', JSON.stringify(db)); 
-                    location.reload(); 
+                    const dados = JSON.parse(ev.target.result); 
+                    if(Array.isArray(dados)) {
+                        await dbDexie.os.clear();
+                        await dbDexie.os.bulkPut(dados);
+                        await carregarDadosIndexedDB();
+                        alert("Backup de Ordens de Serviço importado com sucesso!");
+                    } else {
+                        alert("Arquivo de backup inválido!");
+                    }
                 } catch(err) { alert("Arquivo de backup inválido!"); }
             };
             reader.readAsText(e.target.files[0]);
         }
 
-        function limparBancoDados() { if(confirm("Deseja ZERAR todos os dados?")) { localStorage.removeItem('banco_os'); location.reload(); } }
+        async function limparBancoDados() { 
+            if(confirm("Deseja ZERAR todos os dados?")) { 
+                await dbDexie.os.clear();
+                localStorage.removeItem('banco_os'); 
+                await carregarDadosIndexedDB();
+            } 
+        }
 
-        function deletarOSAtual() {
+        async function deletarOSAtual() {
             if(confirm("Excluir esta OS permanentemente?")) {
-                db = db.filter(i => i.id !== parseInt(document.getElementById('edit-id').value));
-                localStorage.setItem('banco_os', JSON.stringify(db));
+                const editId = parseInt(document.getElementById('edit-id').value);
+                await dbDexie.os.delete(editId);
+                await carregarDadosIndexedDB();
                 limparFormulario();
                 showTab('relatorio');
             }
@@ -927,7 +936,6 @@ document.getElementById('formOS').onsubmit = async function(e) {
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script>
-  // Chave gerada no Google Cloud Console
   const CLIENT_ID = '1005709033673-2d5jrjovrk9g364hm062v6fe7f00r4q6.apps.googleusercontent.com';
   const NOME_ARQUIVO_BACKUP = 'backup_maquinas_2026.json';
   const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
@@ -935,7 +943,6 @@ document.getElementById('formOS').onsubmit = async function(e) {
   let tokenClient;
   let accessToken = null;
 
-  // Inicializa o serviço do Google ao carregar a página
   window.addEventListener('load', () => {
     if (window.google) {
       tokenClient = google.accounts.oauth2.initTokenClient({
@@ -951,7 +958,6 @@ document.getElementById('formOS').onsubmit = async function(e) {
     }
   });
 
-  // Função para conectar/fazer login no Google
   function conectarGoogleDrive() {
     if (tokenClient) {
       tokenClient.requestAccessToken();
@@ -960,18 +966,28 @@ document.getElementById('formOS').onsubmit = async function(e) {
     }
   }
 
-  // Função para enviar o backup para o Google Drive (appDataFolder)
+  // Backup na nuvem lê o banco Dexie (OS + fotos) e o localStorage (Banco de erros)
   async function salvarNoDrive() {
     if (!accessToken) {
       alert('Por favor, clique em "Conectar Drive" primeiro.');
       return;
     }
 
-    // Pega todos os dados armazenados no LocalStorage
-    const dadosLocais = JSON.stringify(localStorage);
-
     try {
-      // 1. Verifica se já existe um arquivo de backup no Drive
+      const osData = await dbDexie.os.toArray();
+      const localData = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        localData[key] = localStorage.getItem(key);
+      }
+
+      const backupCompleto = {
+        osData: osData,
+        localStorageData: localData
+      };
+
+      const dadosParaEnvio = JSON.stringify(backupCompleto);
+
       const query = encodeURIComponent(`name = '${NOME_ARQUIVO_BACKUP}' and 'appDataFolder' in parents and trashed = false`);
       const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&spaces=appDataFolder`, {
         headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -979,7 +995,6 @@ document.getElementById('formOS').onsubmit = async function(e) {
       const searchData = await searchRes.json();
       const arquivoExistente = (searchData.files && searchData.files.length > 0) ? searchData.files[0] : null;
 
-      // 2. Prepara o conteúdo para upload
       const metadata = {
         name: NOME_ARQUIVO_BACKUP,
         mimeType: 'application/json',
@@ -988,7 +1003,7 @@ document.getElementById('formOS').onsubmit = async function(e) {
 
       const formData = new FormData();
       formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      formData.append('file', new Blob([dadosLocais], { type: 'application/json' }));
+      formData.append('file', new Blob([dadosParaEnvio], { type: 'application/json' }));
 
       let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
       let method = 'POST';
@@ -998,7 +1013,6 @@ document.getElementById('formOS').onsubmit = async function(e) {
         method = 'PATCH';
       }
 
-      // 3. Envia para o Drive
       const uploadRes = await fetch(url, {
         method: method,
         headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -1016,7 +1030,7 @@ document.getElementById('formOS').onsubmit = async function(e) {
     }
   }
 
-  // Função para restaurar o backup do Google Drive
+  // Restauração do Drive reconstrói a base no Dexie e no localStorage
   async function restaurarDoDrive() {
     if (!accessToken) {
       alert('Por favor, clique em "Conectar Drive" primeiro.');
@@ -1047,13 +1061,20 @@ document.getElementById('formOS').onsubmit = async function(e) {
       const jsonTexto = await downloadRes.text();
       const dadosRecuperados = JSON.parse(jsonTexto);
 
-      // Limpa e restaura o localStorage
-      localStorage.clear();
-      Object.keys(dadosRecuperados).forEach(chave => {
-        localStorage.setItem(chave, dadosRecuperados[chave]);
-      });
+      if (dadosRecuperados.osData) {
+        await dbDexie.os.clear();
+        await dbDexie.os.bulkPut(dadosRecuperados.osData);
+      }
 
-      alert('Dados restaurados com sucesso! A página será recarregada.');
+      if (dadosRecuperados.localStorageData) {
+        localStorage.clear();
+        Object.keys(dadosRecuperados.localStorageData).forEach(chave => {
+          localStorage.setItem(chave, dadosRecuperados.localStorageData[chave]);
+        });
+      }
+
+      await carregarDadosIndexedDB();
+      alert('Dados restaurados com sucesso!');
       location.reload();
     } catch (err) {
       console.error(err);
